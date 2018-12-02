@@ -143,6 +143,10 @@ func GetRecipes(name string) ([]Recipe, error) {
 		if err != nil {
 			return nil, err
 		}
+		err = recipe.preloadRecipeIngredients()
+		if err != nil {
+			return nil, err
+		}
 		recipes = append(recipes, recipe)
 	}
 	if err = rows.Err(); err != nil {
@@ -161,8 +165,10 @@ func (recipe *Recipe) GetRecipe() error {
 
 	defer db.Close()
 
-	return db.QueryRow("SELECT * FROM recipes WHERE id = $1",
+	db.QueryRow("SELECT * FROM recipes WHERE id = $1",
 		recipe.ID).Scan(&recipe.ID, &recipe.Name, &recipe.Description, &recipe.CategoryID, &recipe.Indications)
+
+	return recipe.preloadRecipeIngredients()
 }
 
 // Deletes a recipe with its ingredients
@@ -192,4 +198,44 @@ func (recipe *Recipe) DeleteRecipe() (result sql.Result, err error) {
 	tx.Commit()
 
 	return result, nil
+}
+
+// preload ingredients related with a recipe
+func (recipe *Recipe) preloadRecipeIngredients() error {
+	db, err := utils.ConnectToDB()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	rows, err := db.Query(`SELECT * FROM ingredients WHERE recipe_id = $1`, recipe.ID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ingredient Ingredient
+		err := rows.Scan(&ingredient.ID, &ingredient.Description, &ingredient.Quantity, &ingredient.MeasureUnit, &ingredient.RecipeID)
+		if err != nil {
+			return err
+		}
+		recipe.Ingredients = append(recipe.Ingredients, ingredient)
+	}
+	if err = rows.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (recipe *Recipe) UpdateRecipe() (sql.Result, error) {
+	db, err := utils.ConnectToDB()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	return db.Exec("UPDATE recipes(name, description, indications, category_id) VALUES($1, $2, $3, $4) WHERE id=$5", recipe.Name, recipe.Description, recipe.Indications, recipe.CategoryID, recipe.ID)
 }

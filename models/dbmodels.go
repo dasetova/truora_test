@@ -22,5 +22,5 @@ type Ingredient struct {
 	Quantity    float64 `json:"quantity"`
 	MeasureUnit string  `json:"measure_unit"`
 	RecipeID    int     `json:"recipe_id"`
-	Recipe      Recipe  `json:"recipe"`
+	//Recipe      Recipe  `json:"recipe"`
 }
