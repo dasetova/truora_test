@@ -1,0 +1,6 @@
+#Compiled file
+truora_test
+#Test database
+*.db
+#Dependencies
+go.sum
