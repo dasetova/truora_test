@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/dasetova/truora_test/utils"
@@ -99,6 +100,13 @@ func (ingredient *Ingredient) RemoveIngredientToRecipe(recipe_id int) (sql.Resul
 	return db.Exec("DELETE FROM ingredients WHERE id = $1 and recipe_id = $2", ingredient.ID, recipe_id)
 }
 
+//Private function used in Recipe's deletion
+func (ingredient *Ingredient) removeIngredientToRecipeTx(tx *sql.Tx, recipe_id int) (sql.Result, error) {
+	fmt.Println(ingredient.ID)
+	fmt.Println(recipe_id)
+	return tx.Exec("DELETE FROM ingredients WHERE id = $1 and recipe_id = $2", ingredient.ID, recipe_id)
+}
+
 // Private function used in Recipe's creation
 func (ingredient *Ingredient) addIngredientToRecipeTx(tx *sql.Tx, recipe_id int) error {
 
@@ -111,4 +119,77 @@ func (ingredient *Ingredient) addIngredientToRecipeTx(tx *sql.Tx, recipe_id int)
 	}
 
 	return nil
+}
+
+// Get recipes with filter by name
+func GetRecipes(name string) ([]Recipe, error) {
+	db, err := utils.ConnectToDB()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer db.Close()
+	rows, err := db.Query(`SELECT * FROM recipes WHERE name LIKE '%' || $1 || '%'`, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	recipes := []Recipe{}
+	for rows.Next() {
+		var recipe Recipe
+		err := rows.Scan(&recipe.ID, &recipe.Name, &recipe.Description, &recipe.CategoryID, &recipe.Indications)
+		if err != nil {
+			return nil, err
+		}
+		recipes = append(recipes, recipe)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return recipes, nil
+}
+
+// Get recipe by ID
+func (recipe *Recipe) GetRecipe() error {
+	db, err := utils.ConnectToDB()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer db.Close()
+
+	return db.QueryRow("SELECT * FROM recipes WHERE id = $1",
+		recipe.ID).Scan(&recipe.ID, &recipe.Name, &recipe.Description, &recipe.CategoryID, &recipe.Indications)
+}
+
+// Deletes a recipe with its ingredients
+func (recipe *Recipe) DeleteRecipe() (result sql.Result, err error) {
+	db, err := utils.ConnectToDB()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	tx, _ := db.Begin()
+	result, err = db.Exec("DELETE FROM ingredients WHERE recipe_id=$1", recipe.ID)
+
+	if err != nil {
+		tx.Rollback()
+		return result, err
+	}
+
+	result, err = db.Exec("DELETE FROM recipes WHERE id=$1", recipe.ID)
+
+	if err != nil {
+		tx.Rollback()
+		return result, err
+	}
+
+	tx.Commit()
+
+	return result, nil
 }
