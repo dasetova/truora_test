@@ -22,7 +22,10 @@ func getCategories(w http.ResponseWriter, req *http.Request) {
 }
 
 func getRecipes(w http.ResponseWriter, req *http.Request) {
-	recipes, err := models.GetRecipes("")
+	filters := req.URL.Query()
+	recipe_name := filters.Get("name")
+
+	recipes, err := models.GetRecipes(recipe_name)
 
 	if err != nil {
 		convertError(w, http.StatusInternalServerError, err.Error())

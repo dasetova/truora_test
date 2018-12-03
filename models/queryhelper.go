@@ -2,7 +2,6 @@ package models
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 
 	"github.com/dasetova/truora_test/utils"
@@ -102,8 +101,6 @@ func (ingredient *Ingredient) RemoveIngredientToRecipe() (sql.Result, error) {
 
 //Private function used in Recipe's deletion
 func (ingredient *Ingredient) removeIngredientToRecipeTx(tx *sql.Tx, recipe_id int) (sql.Result, error) {
-	fmt.Println(ingredient.ID)
-	fmt.Println(recipe_id)
 	return tx.Exec("DELETE FROM ingredients WHERE id = $1 and recipe_id = $2", ingredient.ID, recipe_id)
 }
 
