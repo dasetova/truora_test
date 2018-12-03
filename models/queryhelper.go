@@ -71,7 +71,7 @@ func (recipe *Recipe) CreateRecipe() error {
 }
 
 // Public function used to add ingredient to an existing recipe
-func (ingredient *Ingredient) AddIngredientToRecipe(recipe_id int) error {
+func (ingredient *Ingredient) AddIngredientToRecipe() error {
 	db, err := utils.ConnectToDB()
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (ingredient *Ingredient) AddIngredientToRecipe(recipe_id int) error {
 
 	err = db.QueryRow(
 		"INSERT INTO ingredients(description, quantity, measure_unit, recipe_id) VALUES($1, $2, $3, $4) RETURNING id",
-		ingredient.Description, ingredient.Quantity, ingredient.MeasureUnit, recipe_id).Scan(&ingredient.ID)
+		ingredient.Description, ingredient.Quantity, ingredient.MeasureUnit, ingredient.RecipeID).Scan(&ingredient.ID)
 
 	if err != nil {
 		return err
@@ -90,14 +90,14 @@ func (ingredient *Ingredient) AddIngredientToRecipe(recipe_id int) error {
 }
 
 //Removes the given ingredient
-func (ingredient *Ingredient) RemoveIngredientToRecipe(recipe_id int) (sql.Result, error) {
+func (ingredient *Ingredient) RemoveIngredientToRecipe() (sql.Result, error) {
 	db, err := utils.ConnectToDB()
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	return db.Exec("DELETE FROM ingredients WHERE id = $1 and recipe_id = $2", ingredient.ID, recipe_id)
+	return db.Exec("DELETE FROM ingredients WHERE id = $1 and recipe_id = $2", ingredient.ID, ingredient.RecipeID)
 }
 
 //Private function used in Recipe's deletion
@@ -130,7 +130,7 @@ func GetRecipes(name string) ([]Recipe, error) {
 	}
 
 	defer db.Close()
-	rows, err := db.Query(`SELECT * FROM recipes WHERE name LIKE '%' || $1 || '%'`, name)
+	rows, err := db.Query(`SELECT * FROM recipes r inner join categories c on r.category_id = c.id WHERE r.name LIKE '%' || $1 || '%'`, name)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func GetRecipes(name string) ([]Recipe, error) {
 	recipes := []Recipe{}
 	for rows.Next() {
 		var recipe Recipe
-		err := rows.Scan(&recipe.ID, &recipe.Name, &recipe.Description, &recipe.CategoryID, &recipe.Indications)
+		err := rows.Scan(&recipe.ID, &recipe.Name, &recipe.Description, &recipe.CategoryID, &recipe.Indications, &recipe.Category.ID, &recipe.Category.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -165,9 +165,12 @@ func (recipe *Recipe) GetRecipe() error {
 
 	defer db.Close()
 
-	db.QueryRow("SELECT * FROM recipes WHERE id = $1",
-		recipe.ID).Scan(&recipe.ID, &recipe.Name, &recipe.Description, &recipe.CategoryID, &recipe.Indications)
+	err = db.QueryRow("SELECT * FROM recipes r inner join categories c on r.category_id = c.id WHERE r.id = $1",
+		recipe.ID).Scan(&recipe.ID, &recipe.Name, &recipe.Description, &recipe.CategoryID, &recipe.Indications, &recipe.Category.ID, &recipe.Category.Name)
 
+	if err != nil {
+		return err
+	}
 	return recipe.preloadRecipeIngredients()
 }
 
@@ -237,5 +240,5 @@ func (recipe *Recipe) UpdateRecipe() (sql.Result, error) {
 	}
 	defer db.Close()
 
-	return db.Exec("UPDATE recipes(name, description, indications, category_id) VALUES($1, $2, $3, $4) WHERE id=$5", recipe.Name, recipe.Description, recipe.Indications, recipe.CategoryID, recipe.ID)
+	return db.Exec("UPDATE recipes SET name = $1, description = $2, indications = $3, category_id = $4 WHERE id=$5", recipe.Name, recipe.Description, recipe.Indications, recipe.CategoryID, recipe.ID)
 }
