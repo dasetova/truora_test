@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strings"
 
 	"database/sql"
 
@@ -15,6 +16,7 @@ import (
 
 var (
 	ErrDBConnection = errors.New("failed to connect database")
+	errEnvDBUrlTest = errors.New("failed to connect test database")
 	errDBMigration  = errors.New("failed to migrate database")
 	errEnvDBUrl     = errors.New("Env variable found DATABASE_URL not found")
 	errEnvDBType    = errors.New("Env variable found DATABASE_TYPE not found")
@@ -50,11 +52,19 @@ func MigrateDB() {
 	}
 	defer db.Close()
 
-	migrator, _ := gomigrate.NewMigratorWithLogger(db, gomigrate.Postgres{}, "./migrations", logrus.New())
+	migrator, _ := gomigrate.NewMigratorWithLogger(db, gomigrate.Postgres{}, getMigrationsPath(), logrus.New())
 	err = migrator.Migrate()
 
 	if err != nil {
 		migrator.Rollback()
 		log.Fatal(err)
 	}
+}
+
+func getMigrationsPath() string {
+	var path string = "./migrations"
+	if strings.Compare(os.Getenv("DATABASE_URL"), os.Getenv("DATABASE_URL_TEST")) == 0 {
+		path = "../migrations"
+	}
+	return path
 }
