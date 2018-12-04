@@ -1,4 +1,4 @@
 create table categories (
-	id serial primary key,
+	id INT PRIMARY KEY DEFAULT nextval('categories_seq'),
 	name varchar(50) unique not null
 );

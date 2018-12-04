@@ -68,6 +68,7 @@ func createRecipe(w http.ResponseWriter, req *http.Request) {
 	}
 	defer req.Body.Close()
 	if err := recipe.CreateRecipe(); err != nil {
+
 		convertError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -188,6 +189,7 @@ func convertError(w http.ResponseWriter, code int, message string) {
 
 func convertResponse(w http.ResponseWriter, code int, payload interface{}) {
 	response, _ := json.Marshal(payload)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(code)
 	w.Write(response)

@@ -1,0 +1,3 @@
+DROP SEQUENCE IF EXISTS ingredients_seq;
+DROP SEQUENCE IF EXISTS recipes_seq;
+DROP SEQUENCE IF EXISTS categories_seq;

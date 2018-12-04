@@ -1,5 +1,5 @@
 create table ingredients (
-    id serial primary key,
+    id INT PRIMARY KEY DEFAULT nextval('ingredients_seq'),
     description varchar(50) not null,
     quantity decimal,
     -- No important for now
